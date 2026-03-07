@@ -4,8 +4,8 @@
   "private": true,
   "scripts": {
     "dev": "next dev",
-    "build": "if [ \"$_OPENNEXT\" = '1' ]; then next build; else _OPENNEXT=1 npx @opennextjs/cloudflare build; fi",
-    "build:cf": "BACKEND=cloudflare npx @opennextjs/cloudflare build",
+    "build": "next build",
+    "build:cf": "_OPENNEXT=1 npx @opennextjs/cloudflare build",
     "build:docker": "next build",
     "start": "next start",
     "lint": "eslint",

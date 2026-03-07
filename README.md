@@ -108,6 +108,21 @@ data/
         └── widget.js   # 模块文件
 ```
 
+## 访问密码（可选）
+
+设置 `ACCESS_PASSWORD` 环境变量即可为首页启用密码保护。不设置则无需密码。
+
+**Docker** — 在 `docker-compose.yml` 的 `environment` 中添加：
+
+```yaml
+environment:
+  - ACCESS_PASSWORD=你的密码
+```
+
+**Cloudflare** — 在 Cloudflare Dashboard → Workers → Settings → Variables 中添加 `ACCESS_PASSWORD`。
+
+> 密码保护范围：首页上传界面和管理接口。模块下载链接、订阅链接等公开接口不受影响。
+
 ## 使用方式
 
 1. **上传模块** — 将 `.js` 文件拖入上传区域，或粘贴远程链接点击「转存」
