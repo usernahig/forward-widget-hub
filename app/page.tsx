@@ -18,6 +18,7 @@ import {
   ExternalLink,
   Trash2,
   RefreshCw,
+  Lock,
 } from "lucide-react";
 
 interface FileItem {
@@ -77,6 +78,11 @@ async function readNdjsonStream(
 }
 
 export default function Home() {
+  const [authState, setAuthState] = useState<"loading" | "need-password" | "authenticated">("loading");
+  const [passwordInput, setPasswordInput] = useState("");
+  const [passwordError, setPasswordError] = useState("");
+  const [passwordLoading, setPasswordLoading] = useState(false);
+
   const [isDragging, setIsDragging] = useState(false);
   const [files, setFiles] = useState<FileItem[]>([]);
   const [token, setToken] = useState<string | null>(() => {
@@ -91,6 +97,38 @@ export default function Home() {
   const [collectionsLoading, setCollectionsLoading] = useState(false);
   const [showTokenBanner, setShowTokenBanner] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
+
+  useEffect(() => {
+    fetch("/api/auth").then((r) => r.json()).then((data) => {
+      if (!data.required || data.authenticated) {
+        setAuthState("authenticated");
+      } else {
+        setAuthState("need-password");
+      }
+    }).catch(() => setAuthState("authenticated"));
+  }, []);
+
+  const handlePasswordSubmit = async () => {
+    if (!passwordInput.trim()) return;
+    setPasswordLoading(true);
+    setPasswordError("");
+    try {
+      const res = await fetch("/api/auth", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ password: passwordInput }),
+      });
+      if (res.ok) {
+        setAuthState("authenticated");
+      } else {
+        setPasswordError("密码错误");
+      }
+    } catch {
+      setPasswordError("网络错误");
+    } finally {
+      setPasswordLoading(false);
+    }
+  };
 
   const fetchCollections = useCallback(async (t?: string) => {
     const currentToken = t || token;
@@ -375,6 +413,55 @@ export default function Home() {
   };
 
   const manageUrl = token ? `${typeof window !== "undefined" ? window.location.origin : ""}/manage/${token}` : null;
+
+  if (authState === "loading") {
+    return (
+      <div className="min-h-screen bg-slate-50 flex items-center justify-center">
+        <Loader2 className="w-8 h-8 animate-spin text-slate-400" />
+      </div>
+    );
+  }
+
+  if (authState === "need-password") {
+    return (
+      <div className="min-h-screen bg-slate-50 flex items-center justify-center p-4">
+        <div className="w-full max-w-sm bg-white rounded-2xl shadow-sm border border-slate-200 p-8 space-y-6">
+          <div className="text-center space-y-2">
+            <div className="mx-auto w-12 h-12 bg-indigo-50 rounded-full flex items-center justify-center">
+              <Lock className="w-6 h-6 text-indigo-600" />
+            </div>
+            <h1 className="text-xl font-bold text-slate-900">访问密码</h1>
+            <p className="text-sm text-slate-500">请输入密码以继续</p>
+          </div>
+          <div className="space-y-3">
+            <input
+              type="password"
+              value={passwordInput}
+              onChange={(e) => setPasswordInput(e.target.value)}
+              onKeyDown={(e) => { if (e.key === "Enter") handlePasswordSubmit(); }}
+              placeholder="请输入密码"
+              className="w-full px-4 py-3 border border-slate-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-transparent"
+              autoFocus
+            />
+            {passwordError && (
+              <p className="text-sm text-red-500 flex items-center gap-1">
+                <AlertCircle className="w-3.5 h-3.5" />
+                {passwordError}
+              </p>
+            )}
+            <button
+              onClick={handlePasswordSubmit}
+              disabled={passwordLoading || !passwordInput.trim()}
+              className="w-full py-3 bg-indigo-600 text-white text-sm font-medium rounded-xl hover:bg-indigo-700 disabled:opacity-40 disabled:cursor-not-allowed transition-colors flex items-center justify-center gap-2"
+            >
+              {passwordLoading ? <Loader2 className="w-4 h-4 animate-spin" /> : <ArrowRight className="w-4 h-4" />}
+              确认
+            </button>
+          </div>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="min-h-screen bg-slate-50 text-slate-800 p-4 md:p-8 font-sans">
