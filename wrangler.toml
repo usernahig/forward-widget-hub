@@ -15,8 +15,5 @@ database_id = "5d048312-8c21-4ca2-a8f6-dde24a8e7318"
 binding = "STORAGE"
 bucket_name = "forward-widget-hub-storage"
 
-[build]
-command = "npm run build:cf"
-
 [vars]
 BACKEND = "cloudflare"
