@@ -185,7 +185,9 @@ export async function POST(request: NextRequest) {
       isNewUser = true;
     }
 
-    const siteUrl = process.env.SITE_URL || request.nextUrl.origin;
+    const proto = request.headers.get("x-forwarded-proto") || "https";
+    const host = request.headers.get("host") || request.nextUrl.host;
+    const siteUrl = `${proto}://${host}`;
     const resultBase = { ...(isNewUser ? { token: rawToken } : {}), manageUrl: `${siteUrl}/manage/${rawToken}` };
 
     // Handle remote URL

@@ -25,7 +25,9 @@ export async function GET(
     "SELECT id, filename, widget_id, title, description, version, author, required_version, file_size FROM modules WHERE collection_id = ? ORDER BY created_at"
   ).all(collection.id) as ModuleRow[];
 
-  const siteUrl = process.env.SITE_URL || request.nextUrl.origin;
+  const proto = request.headers.get("x-forwarded-proto") || "https";
+  const host = request.headers.get("host") || request.nextUrl.host;
+  const siteUrl = `${proto}://${host}`;
 
   const fwd = {
     title: collection.title,

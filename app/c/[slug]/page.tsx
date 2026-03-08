@@ -1,4 +1,5 @@
 import { getBackendDb } from "@/lib/backend";
+import { headers } from "next/headers";
 import { notFound } from "next/navigation";
 import { Badge } from "@/components/ui/badge";
 import { APP_NAME } from "@/lib/constants";
@@ -17,8 +18,10 @@ export default async function CollectionPage({ params }: { params: Promise<{ slu
   if (!collection) notFound();
 
   const modules = await db.prepare("SELECT * FROM modules WHERE collection_id = ? ORDER BY created_at").all(collection.id) as Module[];
-  const siteUrl = process.env.SITE_URL || "";
-  const fwdUrl = `${siteUrl}/api/collections/${slug}/fwd`;
+  const h = await headers();
+  const proto = h.get("x-forwarded-proto") || "https";
+  const host = h.get("host") || "localhost";
+  const fwdUrl = `${proto}://${host}/api/collections/${slug}/fwd`;
 
   return (
     <main className="min-h-screen">

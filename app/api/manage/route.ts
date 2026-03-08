@@ -21,7 +21,9 @@ export async function GET(request: NextRequest) {
   const db = await getBackendDb();
   const collections = await db.prepare("SELECT * FROM collections WHERE user_id = ? ORDER BY created_at DESC").all(auth.userId);
 
-  const siteUrl = process.env.SITE_URL || request.nextUrl.origin;
+  const proto = request.headers.get("x-forwarded-proto") || "https";
+  const host = request.headers.get("host") || request.nextUrl.host;
+  const siteUrl = `${proto}://${host}`;
 
   const result = [];
   for (const col of collections as Record<string, unknown>[]) {
