@@ -5,7 +5,7 @@
   "scripts": {
     "dev": "next dev",
     "build": "if [ \"$_OPENNEXT\" = '1' ]; then next build; else _OPENNEXT=1 npx @opennextjs/cloudflare build; fi",
-    "build:cf": "_OPENNEXT=1 npx @opennextjs/cloudflare build",
+    "build:cf": "_OPENNEXT=1 npx @opennextjs/cloudflare build && sed -i.bak 's/^import \\* as process from .node:process./import process from \"node:process\";/' .open-next/middleware/handler.mjs && rm -f .open-next/middleware/handler.mjs.bak",
     "build:docker": "next build",
     "start": "next start",
     "lint": "eslint",
