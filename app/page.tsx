@@ -171,6 +171,112 @@ export default function Home() {
     setTimeout(() => fetchCollections(newToken || undefined), 300);
   }, [token, fetchCollections]);
 
+  const processFwdInBrowser = useCallback(async (
+    fwdContent: string,
+    itemId: string,
+    currentToken: string | null,
+  ) => {
+    interface FwdData {
+      title?: string;
+      description?: string;
+      icon?: string;
+      widgets: Array<{
+        id?: string; title?: string; description?: string;
+        version?: string; author?: string; requiredVersion?: string;
+        url: string;
+      }>;
+    }
+
+    let fwd: FwdData;
+    try {
+      fwd = JSON.parse(fwdContent);
+      if (!fwd.widgets || !Array.isArray(fwd.widgets)) {
+        throw new Error("missing widgets array");
+      }
+    } catch (e) {
+      setFiles((prev) => prev.map((f) =>
+        f.id === itemId ? { ...f, status: "error" as const, progress: 100, errorMsg: `解析失败: ${(e as Error).message}` } : f
+      ));
+      return;
+    }
+
+    const downloadedFiles: File[] = [];
+    const widgetMetas: Array<{
+      id?: string; title?: string; description?: string;
+      version?: string; author?: string; requiredVersion?: string;
+    }> = [];
+
+    for (let i = 0; i < fwd.widgets.length; i++) {
+      const widget = fwd.widgets[i];
+      const fname = widget.url.split("/").pop() || "widget.js";
+
+      setFiles((prev) => prev.map((f) =>
+        f.id === itemId ? {
+          ...f,
+          status: "processing" as const,
+          progress: Math.round((i / fwd.widgets.length) * 80) + 10,
+          processingDetail: `正在下载 (${i + 1}/${fwd.widgets.length}): ${fname}`,
+        } : f
+      ));
+
+      try {
+        const res = await fetch(widget.url);
+        if (!res.ok) throw new Error(`HTTP ${res.status}`);
+        const blob = await res.blob();
+        downloadedFiles.push(new File([blob], fname, { type: "application/javascript" }));
+        widgetMetas.push({
+          id: widget.id, title: widget.title, description: widget.description,
+          version: widget.version, author: widget.author, requiredVersion: widget.requiredVersion,
+        });
+      } catch (e) {
+        setFiles((prev) => prev.map((f) =>
+          f.id === itemId ? { ...f, status: "error" as const, progress: 100, errorMsg: `下载 ${fname} 失败: ${(e as Error).message}` } : f
+        ));
+        return;
+      }
+    }
+
+    setFiles((prev) => prev.map((f) =>
+      f.id === itemId ? { ...f, processingDetail: "正在上传到服务器...", progress: 90 } : f
+    ));
+
+    const formData = new FormData();
+    downloadedFiles.forEach((file) => formData.append("files", file));
+    if (currentToken) formData.append("token", currentToken);
+    if (fwd.title) formData.append("title", fwd.title);
+    if (fwd.description) formData.append("description", fwd.description);
+    if (fwd.icon) formData.append("icon", fwd.icon);
+    formData.append("widget_meta", JSON.stringify(widgetMetas));
+
+    try {
+      const res = await fetch("/api/upload", { method: "POST", body: formData });
+      const data = await res.json();
+      if (!res.ok) {
+        setFiles((prev) => prev.map((f) =>
+          f.id === itemId ? { ...f, status: "error" as const, progress: 100, errorMsg: data.error || "上传失败" } : f
+        ));
+        return;
+      }
+
+      onUploadSuccess(data);
+
+      setFiles((prev) => prev.map((f) =>
+        f.id === itemId ? {
+          ...f,
+          status: "success" as const,
+          progress: 100,
+          url: data.fwdUrl || null,
+          fwdUrl: data.fwdUrl || null,
+          type: "fwd" as const,
+        } : f
+      ));
+    } catch {
+      setFiles((prev) => prev.map((f) =>
+        f.id === itemId ? { ...f, status: "error" as const, progress: 100, errorMsg: "网络错误" } : f
+      ));
+    }
+  }, [onUploadSuccess]);
+
   const handleFiles = useCallback(async (newFiles: File[], currentToken: string | null) => {
     const validFiles = newFiles.filter(
       (f) => f.name.endsWith(".js") || f.name.endsWith(".fwd")
@@ -181,11 +287,35 @@ export default function Home() {
     }
     if (validFiles.length === 0) return;
 
-    const fileObjects: FileItem[] = validFiles.map((file) => ({
+    const fwdFiles = validFiles.filter((f) => f.name.endsWith(".fwd"));
+    const jsFiles = validFiles.filter((f) => f.name.endsWith(".js"));
+
+    // Process .fwd files client-side
+    for (const fwdFile of fwdFiles) {
+      const itemId = Math.random().toString(36).substring(7);
+      setFiles((prev) => [{
+        id: itemId,
+        name: fwdFile.name,
+        size: (fwdFile.size / 1024).toFixed(2) + " KB",
+        type: "fwd" as const,
+        status: "processing" as const,
+        progress: 5,
+        url: null,
+        file: fwdFile,
+        processingDetail: "正在解析...",
+      }, ...prev]);
+      const content = await fwdFile.text();
+      await processFwdInBrowser(content, itemId, currentToken);
+    }
+
+    // Upload .js files normally
+    if (jsFiles.length === 0) return;
+
+    const fileObjects: FileItem[] = jsFiles.map((file) => ({
       id: Math.random().toString(36).substring(7),
       name: file.name,
       size: (file.size / 1024).toFixed(2) + " KB",
-      type: file.name.endsWith(".fwd") ? "fwd" as const : "js" as const,
+      type: "js" as const,
       status: "uploading" as const,
       progress: 0,
       url: null,
@@ -195,18 +325,14 @@ export default function Home() {
     setFiles((prev) => [...fileObjects, ...prev]);
 
     const formData = new FormData();
-    validFiles.forEach((file) => formData.append("files", file));
+    jsFiles.forEach((file) => formData.append("files", file));
     if (currentToken) formData.append("token", currentToken);
 
     const progressInterval = setInterval(() => {
       setFiles((prev) =>
         prev.map((f) => {
           if (fileObjects.some((fo) => fo.id === f.id) && f.status === "uploading") {
-            const newProgress = Math.min(f.progress + Math.floor(Math.random() * 15) + 5, 90);
-            if (newProgress >= 90 && f.type === "fwd") {
-              return { ...f, status: "processing" as const, progress: 90 };
-            }
-            return { ...f, progress: newProgress };
+            return { ...f, progress: Math.min(f.progress + Math.floor(Math.random() * 15) + 5, 90) };
           }
           return f;
         })
@@ -216,41 +342,14 @@ export default function Home() {
     try {
       const res = await fetch("/api/upload", { method: "POST", body: formData });
       clearInterval(progressInterval);
-      const isStream = (res.headers.get("content-type") || "").includes("ndjson");
-      let data: Record<string, unknown>;
-
-      if (isStream) {
+      const data = await res.json();
+      if (!res.ok) {
         setFiles((prev) => prev.map((f) =>
           fileObjects.some((fo) => fo.id === f.id)
-            ? { ...f, status: "processing" as const, progress: 90, processingDetail: "正在解析依赖..." }
+            ? { ...f, status: "error" as const, progress: 100, errorMsg: data.error as string }
             : f
         ));
-        const streamResult = await readNdjsonStream(res, (detail) => {
-          setFiles((prev) => prev.map((f) =>
-            fileObjects.some((fo) => fo.id === f.id)
-              ? { ...f, processingDetail: detail }
-              : f
-          ));
-        });
-        if (!streamResult.ok) {
-          setFiles((prev) => prev.map((f) =>
-            fileObjects.some((fo) => fo.id === f.id)
-              ? { ...f, status: "error" as const, progress: 100, errorMsg: (streamResult.data.error as string) || "处理失败" }
-              : f
-          ));
-          return;
-        }
-        data = streamResult.data;
-      } else {
-        data = await res.json();
-        if (!res.ok) {
-          setFiles((prev) => prev.map((f) =>
-            fileObjects.some((fo) => fo.id === f.id)
-              ? { ...f, status: "error" as const, progress: 100, errorMsg: data.error as string }
-              : f
-          ));
-          return;
-        }
+        return;
       }
 
       onUploadSuccess(data);
@@ -260,13 +359,8 @@ export default function Home() {
       setFiles((prev) =>
         prev.map((f) => {
           const idx = fileObjects.findIndex((fo) => fo.id === f.id);
-          if (idx !== -1) {
-            if (f.type === "fwd" && data.fwdUrl) {
-              return { ...f, status: "success" as const, progress: 100, url: data.fwdUrl as string, fwdUrl: data.fwdUrl as string };
-            }
-            if (modules?.[idx]) {
-              return { ...f, status: "success" as const, progress: 100, url: `${siteUrl}/api/modules/${modules[idx].id}/raw` };
-            }
+          if (idx !== -1 && modules?.[idx]) {
+            return { ...f, status: "success" as const, progress: 100, url: `${siteUrl}/api/modules/${modules[idx].id}/raw` };
           }
           return f;
         })
@@ -281,7 +375,7 @@ export default function Home() {
         )
       );
     }
-  }, [onUploadSuccess]);
+  }, [onUploadSuccess, processFwdInBrowser]);
 
   const handleDrop = useCallback((e: React.DragEvent) => {
     e.preventDefault();
@@ -309,84 +403,79 @@ export default function Home() {
     const filename = url.split("/").pop() || "remote";
     const fileItem: FileItem = {
       id: itemId, name: filename, size: "远程文件",
-      type: "url", status: "uploading", progress: 30, url: null, file: null,
+      type: "url", status: "uploading", progress: 10, url: null, file: null,
     };
     setFiles((prev) => [fileItem, ...prev]);
     setUrlInput("");
 
-    const progressInterval = setInterval(() => {
-      setFiles((prev) => prev.map((f) => {
-        if (f.id === itemId && f.status === "uploading") {
-          const newProgress = Math.min(f.progress + Math.floor(Math.random() * 10) + 3, 90);
-          if (newProgress >= 90) {
-            return { ...f, status: "processing" as const, progress: 90 };
-          }
-          return { ...f, progress: newProgress };
-        }
-        return f;
-      }));
-    }, 300);
-
     try {
-      const formData = new FormData();
-      formData.append("url", url);
-      const currentToken = localStorage.getItem("fwh_token");
-      if (currentToken) formData.append("token", currentToken);
-
-      const res = await fetch("/api/upload", { method: "POST", body: formData });
-      clearInterval(progressInterval);
-      const isStream = (res.headers.get("content-type") || "").includes("ndjson");
-      let data: Record<string, unknown>;
-
-      if (isStream) {
-        setFiles((prev) => prev.map((f) =>
-          f.id === itemId ? { ...f, status: "processing" as const, progress: 90, processingDetail: "正在解析依赖..." } : f
-        ));
-        const streamResult = await readNdjsonStream(res, (detail) => {
-          setFiles((prev) => prev.map((f) =>
-            f.id === itemId ? { ...f, processingDetail: detail } : f
-          ));
-        });
-        if (!streamResult.ok) {
-          setFiles((prev) => prev.map((f) =>
-            f.id === itemId ? { ...f, status: "error" as const, progress: 100, errorMsg: (streamResult.data.error as string) || "处理失败" } : f
-          ));
-          return;
-        }
-        data = streamResult.data;
-      } else {
-        data = await res.json();
-        if (!res.ok) {
-          setFiles((prev) => prev.map((f) =>
-            f.id === itemId ? { ...f, status: "error" as const, progress: 100, errorMsg: data.error as string } : f
-          ));
-          return;
-        }
-      }
-
-      onUploadSuccess(data);
-
-      if (data.fwdUrl) {
-        const modules = data.modules as { filename: string }[] | undefined;
-        setFiles((prev) => prev.map((f) =>
-          f.id === itemId ? { ...f, status: "success" as const, progress: 100, url: data.fwdUrl as string, fwdUrl: data.fwdUrl as string, name: modules?.[0]?.filename || filename, type: "fwd" as const } : f
-        ));
-      } else if ((data.modules as { id: string; filename: string }[])?.length === 1) {
-        const siteUrl = window.location.origin;
-        const mod = (data.modules as { id: string; filename: string }[])[0];
-        setFiles((prev) => prev.map((f) =>
-          f.id === itemId ? { ...f, status: "success" as const, progress: 100, url: `${siteUrl}/api/modules/${mod.id}/raw`, name: mod.filename } : f
-        ));
-      }
-    } catch {
-      clearInterval(progressInterval);
+      // Download file in browser
       setFiles((prev) => prev.map((f) =>
-        f.id === itemId ? { ...f, status: "error" as const, progress: 100, errorMsg: "网络错误" } : f
+        f.id === itemId ? { ...f, progress: 20, processingDetail: "正在下载文件..." } : f
+      ));
+
+      const res = await fetch(url);
+      if (!res.ok) throw new Error(`HTTP ${res.status}`);
+      const arrayBuffer = await res.arrayBuffer();
+      const text = new TextDecoder().decode(arrayBuffer);
+
+      // Detect .fwd
+      let isFwd = filename.endsWith(".fwd");
+      if (!isFwd) {
+        try {
+          const parsed = JSON.parse(text);
+          isFwd = Array.isArray(parsed.widgets);
+        } catch { /* not JSON, treat as .js */ }
+      }
+
+      if (isFwd) {
+        setFiles((prev) => prev.map((f) =>
+          f.id === itemId ? { ...f, type: "fwd" as const, status: "processing" as const } : f
+        ));
+        await processFwdInBrowser(text, itemId, localStorage.getItem("fwh_token"));
+      } else {
+        // Single .js file - upload to server
+        setFiles((prev) => prev.map((f) =>
+          f.id === itemId ? { ...f, progress: 50, processingDetail: "正在上传..." } : f
+        ));
+        const blob = new Blob([arrayBuffer], { type: "application/javascript" });
+        const file = new File([blob], filename);
+        const formData = new FormData();
+        formData.append("files", file);
+        const currentToken = localStorage.getItem("fwh_token");
+        if (currentToken) formData.append("token", currentToken);
+
+        const uploadRes = await fetch("/api/upload", { method: "POST", body: formData });
+        const data = await uploadRes.json();
+        if (!uploadRes.ok) {
+          setFiles((prev) => prev.map((f) =>
+            f.id === itemId ? { ...f, status: "error" as const, progress: 100, errorMsg: data.error } : f
+          ));
+          return;
+        }
+
+        onUploadSuccess(data);
+
+        const siteUrl = window.location.origin;
+        const modules = data.modules as { id: string; filename: string }[] | undefined;
+        if (modules?.length) {
+          setFiles((prev) => prev.map((f) =>
+            f.id === itemId ? {
+              ...f, status: "success" as const, progress: 100,
+              name: modules[0].filename,
+              url: `${siteUrl}/api/modules/${modules[0].id}/raw`,
+            } : f
+          ));
+        }
+      }
+    } catch (e) {
+      setFiles((prev) => prev.map((f) =>
+        f.id === itemId ? { ...f, status: "error" as const, progress: 100, errorMsg: (e as Error).message || "下载失败" } : f
       ));
     } finally {
       setUrlLoading(false);
     }
-  }, [urlInput, onUploadSuccess]);
+  }, [urlInput, processFwdInBrowser, onUploadSuccess]);
 
   const removeFile = (id: string) => {
     setFiles((prev) => prev.filter((f) => f.id !== id));

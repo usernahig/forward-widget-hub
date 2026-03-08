@@ -138,6 +138,16 @@ export async function POST(request: NextRequest) {
     const token = formData.get("token") as string | null;
     const collectionTitle = (formData.get("title") as string) || "My Widgets";
     const collectionDesc = (formData.get("description") as string) || "";
+    const collectionIcon = (formData.get("icon") as string) || "";
+    const widgetMetaRaw = formData.get("widget_meta") as string | null;
+    let widgetMeta: Array<{ id?: string; title?: string; description?: string; version?: string; author?: string; requiredVersion?: string }> | null = null;
+    if (widgetMetaRaw) {
+      try {
+        widgetMeta = JSON.parse(widgetMetaRaw);
+      } catch {
+        return NextResponse.json({ error: "Invalid widget_meta format" }, { status: 400 });
+      }
+    }
 
     if (!files.length && !remoteUrl) {
       return NextResponse.json({ error: "No files or URL provided" }, { status: 400 });
@@ -313,6 +323,7 @@ export async function POST(request: NextRequest) {
     // Only .js files — regular JSON response
     const allModules: ModuleInfo[] = [];
     let collectionId: string;
+    let collectionSlug: string;
 
     const existingCollection = formData.get("collection_id") as string | null;
     if (existingCollection) {
@@ -321,30 +332,41 @@ export async function POST(request: NextRequest) {
         return NextResponse.json({ error: "Collection not found or not owned" }, { status: 404 });
       }
       collectionId = col.id;
+      collectionSlug = col.slug;
     } else {
       collectionId = nanoid();
-      const slug = nanoid(10);
-      await db.prepare("INSERT INTO collections (id, user_id, slug, title, description) VALUES (?, ?, ?, ?, ?)").run(collectionId, userId, slug, collectionTitle, collectionDesc);
+      collectionSlug = nanoid(10);
+      await db.prepare("INSERT INTO collections (id, user_id, slug, title, description, icon_url) VALUES (?, ?, ?, ?, ?, ?)").run(collectionId, userId, collectionSlug, collectionTitle, collectionDesc, collectionIcon);
     }
 
-    for (const file of jsFiles) {
+    for (let i = 0; i < jsFiles.length; i++) {
+      const file = jsFiles[i];
       const buffer = Buffer.from(await file.arrayBuffer());
       const encrypted = isEncrypted(buffer);
       const content = buffer.toString("utf8");
       const meta = encrypted ? null : parseWidgetMetadata(content);
+      const wm = widgetMeta?.[i];
       const moduleId = nanoid();
       const filename = file.name;
 
       await db.prepare(
         `INSERT INTO modules (id, collection_id, filename, widget_id, title, description, version, author, required_version, file_size, is_encrypted)
          VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`
-      ).run(moduleId, collectionId, filename, meta?.id || null, meta?.title || filename.replace(".js", ""), meta?.description || "", meta?.version || null, meta?.author || null, meta?.requiredVersion || null, file.size, encrypted ? 1 : 0);
+      ).run(moduleId, collectionId, filename,
+        wm?.id || meta?.id || null,
+        wm?.title || meta?.title || filename.replace(".js", ""),
+        wm?.description || meta?.description || "",
+        wm?.version || meta?.version || null,
+        wm?.author || meta?.author || null,
+        wm?.requiredVersion || meta?.requiredVersion || null,
+        file.size, encrypted ? 1 : 0);
 
       await store.save(collectionId, filename, buffer);
-      allModules.push({ id: moduleId, filename, title: meta?.title || filename, version: meta?.version, encrypted });
+      allModules.push({ id: moduleId, filename, title: wm?.title || meta?.title || filename, version: wm?.version || meta?.version, encrypted });
     }
 
-    return NextResponse.json({ ...resultBase, modules: allModules });
+    const fwdUrl = `${siteUrl}/api/collections/${collectionSlug}/fwd`;
+    return NextResponse.json({ ...resultBase, fwdUrl, modules: allModules });
   } catch (error) {
     console.error("Upload error:", error);
     return NextResponse.json({ error: "Internal server error" }, { status: 500 });
