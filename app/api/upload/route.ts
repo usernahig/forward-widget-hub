@@ -240,7 +240,7 @@ export async function POST(request: NextRequest) {
       const meta = encrypted ? null : parseWidgetMetadata(buffer.toString("utf8"));
       const collectionId = nanoid();
       const slug = nanoid(10);
-      await db.prepare("INSERT INTO collections (id, user_id, slug, title, description, source_url) VALUES (?, ?, ?, ?, ?, ?)").run(collectionId, userId, slug, meta?.title || filename.replace(".js", ""), meta?.description || "", remoteUrl);
+      await db.prepare("INSERT INTO collections (id, user_id, slug, title, description) VALUES (?, ?, ?, ?, ?)").run(collectionId, userId, slug, meta?.title || filename.replace(".js", ""), meta?.description || "");
       const fwdUrl = `${siteUrl}/api/collections/${slug}/fwd`;
       const moduleId = nanoid();
       await db.prepare(
@@ -420,7 +420,7 @@ export async function POST(request: NextRequest) {
     } else {
       collectionId = nanoid();
       collectionSlug = nanoid(10);
-      await db.prepare("INSERT INTO collections (id, user_id, slug, title, description, icon_url, source_url) VALUES (?, ?, ?, ?, ?, ?, ?)").run(collectionId, userId, collectionSlug, collectionTitle, collectionDesc, collectionIcon, sourceUrl || null);
+      await db.prepare("INSERT INTO collections (id, user_id, slug, title, description, icon_url) VALUES (?, ?, ?, ?, ?, ?)").run(collectionId, userId, collectionSlug, collectionTitle, collectionDesc, collectionIcon);
     }
 
     for (let i = 0; i < jsFiles.length; i++) {
@@ -454,6 +454,7 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({ ...resultBase, fwdUrl, modules: allModules });
   } catch (error) {
     console.error("Upload error:", error);
-    return NextResponse.json({ error: "Internal server error" }, { status: 500 });
+    const msg = error instanceof Error ? error.message : String(error);
+    return NextResponse.json({ error: msg }, { status: 500 });
   }
 }
