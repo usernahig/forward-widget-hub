@@ -99,6 +99,37 @@ function createProgressStream(
   });
 }
 
+async function downloadAndStoreIcon(
+  iconUrl: string,
+  collectionId: string,
+  slug: string,
+  siteUrl: string,
+  store: Awaited<ReturnType<typeof getBackendStore>>,
+): Promise<string> {
+  if (!iconUrl) return "";
+  try {
+    const controller = new AbortController();
+    const timeout = setTimeout(() => controller.abort(), 10_000);
+    try {
+      const res = await fetch(iconUrl, { signal: controller.signal, headers: { "User-Agent": "Forward" } });
+      if (!res.ok) return iconUrl;
+      const contentType = res.headers.get("content-type") || "image/jpeg";
+      const ext = contentType.includes("png") ? "png"
+        : contentType.includes("gif") ? "gif"
+        : contentType.includes("webp") ? "webp"
+        : contentType.includes("svg") ? "svg"
+        : "jpg";
+      const buf = Buffer.from(await res.arrayBuffer());
+      await store.save(collectionId, `_icon.${ext}`, buf);
+      return `${siteUrl}/api/collections/${slug}/icon`;
+    } finally {
+      clearTimeout(timeout);
+    }
+  } catch {
+    return iconUrl; // fallback to original URL
+  }
+}
+
 async function downloadAndStoreWidget(
   widget: FwdWidget,
   collectionId: string,
@@ -218,9 +249,10 @@ export async function POST(request: NextRequest) {
 
         const collectionId = nanoid();
         const slug = nanoid(10);
+        const iconUrl = fwd.icon ? await downloadAndStoreIcon(fwd.icon, collectionId, slug, siteUrl, store) : "";
         await db.prepare(
           "INSERT INTO collections (id, user_id, slug, title, description, icon_url, source_url) VALUES (?, ?, ?, ?, ?, ?, ?)"
-        ).run(collectionId, userId, slug, fwd.title || downloaded.filename, fwd.description || "", fwd.icon || "", remoteUrl);
+        ).run(collectionId, userId, slug, fwd.title || downloaded.filename, fwd.description || "", iconUrl, remoteUrl);
         const fwdUrl = `${siteUrl}/api/collections/${slug}/fwd`;
 
         return createProgressStream(async (send) => {
@@ -286,9 +318,10 @@ export async function POST(request: NextRequest) {
         for (const { file, fwd } of parsedFwds) {
           const collectionId = nanoid();
           const slug = nanoid(10);
+          const iconUrl = fwd.icon ? await downloadAndStoreIcon(fwd.icon, collectionId, slug, siteUrl, store) : "";
           await db.prepare(
             "INSERT INTO collections (id, user_id, slug, title, description, icon_url, source_url) VALUES (?, ?, ?, ?, ?, ?, ?)"
-          ).run(collectionId, userId, slug, fwd.title || file.name, fwd.description || "", fwd.icon || "", sourceUrl || null);
+          ).run(collectionId, userId, slug, fwd.title || file.name, fwd.description || "", iconUrl, sourceUrl || null);
           fwdUrl = `${siteUrl}/api/collections/${slug}/fwd`;
 
           for (const widget of fwd.widgets) {
@@ -342,7 +375,10 @@ export async function POST(request: NextRequest) {
       const collectionId = col.id;
 
       // Update collection metadata if provided
-      if (collectionTitle) await db.prepare("UPDATE collections SET title = ?, description = ?, icon_url = ?, source_url = COALESCE(?, source_url), updated_at = unixepoch() WHERE id = ?").run(collectionTitle, collectionDesc, collectionIcon, sourceUrl, collectionId);
+      if (collectionTitle) {
+        const storedIcon = collectionIcon ? await downloadAndStoreIcon(collectionIcon, collectionId, col.slug, siteUrl, store) : collectionIcon;
+        await db.prepare("UPDATE collections SET title = ?, description = ?, icon_url = ?, source_url = COALESCE(?, source_url), updated_at = unixepoch() WHERE id = ?").run(collectionTitle, collectionDesc, storedIcon, sourceUrl, collectionId);
+      }
 
       // Get existing modules for matching
       const existingModules = await db.prepare("SELECT id, filename, widget_id, source_url FROM modules WHERE collection_id = ?").all(collectionId) as Array<{ id: string; filename: string; widget_id: string | null; source_url: string | null }>;
