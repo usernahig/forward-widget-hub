@@ -9,7 +9,9 @@ export function createOssStore(): Store {
     region: process.env.OSS_REGION || "oss-cn-hangzhou",
   });
 
-  const cdnDomain = process.env.OSS_CDN_DOMAIN || "assets.vvebo.vip";
+  const bucket = process.env.OSS_BUCKET || "forward-image";
+  const region = process.env.OSS_REGION || "oss-cn-hangzhou";
+  const cdnDomain = process.env.OSS_CDN_DOMAIN || `${bucket}.${region}.aliyuncs.com`;
   const prefix = "widget-hub";
 
   function ossKey(collectionId: string, filename: string) {
