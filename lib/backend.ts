@@ -14,6 +14,7 @@ export interface Store {
   read(collectionId: string, filename: string): Promise<Buffer | null>;
   remove(collectionId: string, filename: string): Promise<void>;
   removeCollection(collectionId: string): Promise<void>;
+  getUrl?(collectionId: string, filename: string): string | null;
 }
 
 const BACKEND = process.env.BACKEND || "local";
@@ -45,6 +46,13 @@ export async function getBackendStore(): Promise<Store> {
     const { createR2Store } = await import("./adapters/r2");
     const env = await getCfEnv();
     return createR2Store(env.STORAGE);
+  }
+  if (BACKEND === "oss") {
+    if (!_store) {
+      const { createOssStore } = await import("./adapters/oss");
+      _store = createOssStore();
+    }
+    return _store;
   }
   if (!_store) {
     const { createLocalStore } = await import("./adapters/local-fs");

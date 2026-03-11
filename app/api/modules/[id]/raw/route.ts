@@ -18,6 +18,13 @@ export async function GET(
   if (!mod) return NextResponse.json({ error: "Not found" }, { status: 404 });
 
   const store = await getBackendStore();
+
+  // If store supports CDN URLs, redirect there
+  const cdnUrl = store.getUrl?.(mod.collection_id, mod.filename);
+  if (cdnUrl) {
+    return NextResponse.redirect(cdnUrl, 302);
+  }
+
   const content = await store.read(mod.collection_id, mod.filename);
   if (!content) return NextResponse.json({ error: "File not found" }, { status: 404 });
 
