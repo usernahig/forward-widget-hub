@@ -13,6 +13,7 @@ CREATE TABLE IF NOT EXISTS collections (
   title TEXT NOT NULL,
   description TEXT DEFAULT '',
   icon_url TEXT DEFAULT '',
+  source_url TEXT,
   created_at INTEGER DEFAULT (unixepoch()),
   updated_at INTEGER DEFAULT (unixepoch()),
   FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE
@@ -27,8 +28,11 @@ CREATE TABLE IF NOT EXISTS modules (
   description TEXT DEFAULT '',
   version TEXT,
   author TEXT,
+  required_version TEXT,
   file_size INTEGER DEFAULT 0,
   is_encrypted INTEGER DEFAULT 0,
+  source_url TEXT,
+  oss_key TEXT,
   created_at INTEGER DEFAULT (unixepoch()),
   updated_at INTEGER DEFAULT (unixepoch()),
   FOREIGN KEY (collection_id) REFERENCES collections(id) ON DELETE CASCADE

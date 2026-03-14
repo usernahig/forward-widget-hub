@@ -1,4 +1,5 @@
 import type { Db, DbStatement } from "../backend";
+import { MIGRATIONS } from "../db-schema";
 
 interface D1PreparedStatement {
   bind(...values: unknown[]): D1PreparedStatement;
@@ -12,8 +13,17 @@ interface D1Database {
   exec(sql: string): Promise<unknown>;
 }
 
+let _migrated = false;
+
 export function createD1Db(binding: unknown): Db {
   const d1 = binding as D1Database;
+
+  if (!_migrated) {
+    _migrated = true;
+    for (const sql of MIGRATIONS) {
+      d1.exec(sql).catch(() => {/* column already exists */});
+    }
+  }
 
   return {
     prepare(sql: string): DbStatement {
